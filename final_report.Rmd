@@ -234,6 +234,15 @@ fviz_cluster(pam.res,
 ```
 From KMedoids clustering, South Carolina, Wisconsin, Virginia and Washington comes out as medoids. 
 
+```{r}
+med_sil <- eclust(scaled_crimes, "pam", k = 4, hc_metric = "euclidean",
+                 hc_method = "ward.D2", graph = FALSE)
+fviz_silhouette(med_sil, palette = "jco",
+                ggtheme = theme_classic())
+```
+
+The average silhouette width of KMedoids is 0.23, which is very small, and indicates that clustering may not be the best option for explaining the variance in the data.
+
 ## Hierarchical Clustering on First Two Principle Components
  
 ```{r}
@@ -360,7 +369,9 @@ intern <- clValid(PC, nClust = 2:6,
 
 summary(intern)
 ```
-The 3 metrics do not agree on the best approch. According to connectivity hierarchical with 2 clusters is the best, according to Dunn kmeans with 6 clusters is the best and according to Silhouette kmeans with 4 clusters is the best.
+The 3 metrics do not agree on the best approach. According to connectivity hierarchical with 2 clusters is the best, according to Dunn kmeans with 6 clusters is the best and according to Silhouette kmeans with 4 clusters is the best.
 
 
 ## Conclusion
+
+The three statistical methods we used in this report had varying levels of success in accurately representing patterns in the data. Multiple linear regression resulted in a very small R^2, indicating that there is very little linear relationship between hate crimes per 100k and the rest of the variables. Principle component analysis was much more successful. The first three principle components were able to explain nearly 80 percent of the variance in the data, effectively reducing the dimensions of the data. Clustering had little success. Clustering on the original data yielded groupings with small average silhouette widths. Clustering with respect to the first two principle components had larger average silhouette width, but the results must be taken with a grain of salt since the first two principle components only explain roughly 65 percent of the variability in the data. Overall principle component analysis by itself seems to be the most effect method to represent the data set.

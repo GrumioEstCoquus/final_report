@@ -679,6 +679,25 @@ fviz_cluster(pam.res,
 KMedoids clustering, South Carolina, Wisconsin, Virginia and Washington
 comes out as medoids.
 
+``` r
+med_sil <- eclust(scaled_crimes, "pam", k = 4, hc_metric = "euclidean",
+                 hc_method = "ward.D2", graph = FALSE)
+fviz_silhouette(med_sil, palette = "jco",
+                ggtheme = theme_classic())
+```
+
+    ##   cluster size ave.sil.width
+    ## 1       1   10          0.32
+    ## 2       2   18          0.21
+    ## 3       3    9          0.23
+    ## 4       4   11          0.16
+
+![](final_report_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+
+The average silhouette width of KMedoids is 0.23, which is very small,
+and indicates that clustering may not be the best option for explaining
+the variance in the data.
+
 ## Hierarchical Clustering on First Two Principle Components
 
 ``` r
@@ -711,7 +730,7 @@ fviz_dend(pc.hc, cex = 0.5)
     ## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
     ## generated.
 
-![](final_report_files/figure-gfm/unnamed-chunk-21-1.png)<!-- --> Using
+![](final_report_files/figure-gfm/unnamed-chunk-22-1.png)<!-- --> Using
 Ward’s method, there seems to be four main clusters of states.
 
 ``` r
@@ -723,7 +742,7 @@ fviz_cluster(list(data = PC[,1:2], cluster = grp),
              show.clust.cent = FALSE, ggtheme = theme_minimal())
 ```
 
-![](final_report_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
+![](final_report_files/figure-gfm/unnamed-chunk-23-1.png)<!-- -->
 
 ``` r
 res.coph <- cophenetic(pc.hc)
@@ -747,7 +766,7 @@ cor(pc.dist, cophenetic(res.hc2))
 fviz_dend(res.hc2, cex = 0.5)
 ```
 
-![](final_report_files/figure-gfm/unnamed-chunk-24-1.png)<!-- --> The
+![](final_report_files/figure-gfm/unnamed-chunk-25-1.png)<!-- --> The
 correlation between cophenetic distance from using average linkage
 method and the original distance is around 0.64 is larger than the one
 from Ward’s method, although it is still not that large. Also the
@@ -760,7 +779,7 @@ to “cut” the tree.
 fviz_nbclust(PC[,1:2], kmeans, nstart = 25, method = "wss")
 ```
 
-![](final_report_files/figure-gfm/unnamed-chunk-25-1.png)<!-- --> The
+![](final_report_files/figure-gfm/unnamed-chunk-26-1.png)<!-- --> The
 graph of the function of WSS vs K, indicates that 4 is the optimal
 number of clusters for kmeans
 
@@ -819,7 +838,7 @@ components which explain less than 70 percent of the variance
 fviz_cluster(km.res, data = PC[,1:2], xlab = "PC1 (34.2%)", ylab = "PC2 (30.4%)")
 ```
 
-![](final_report_files/figure-gfm/unnamed-chunk-27-1.png)<!-- -->
+![](final_report_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
 
 The clusters on the plane spanned by the first 2 principle component, do
 good job separating observations. However, the the first two principle
@@ -839,7 +858,7 @@ fviz_silhouette(mean_sil, palette = "jco",
     ## 3       3   18          0.41
     ## 4       4   10          0.52
 
-![](final_report_files/figure-gfm/unnamed-chunk-28-1.png)<!-- -->
+![](final_report_files/figure-gfm/unnamed-chunk-29-1.png)<!-- -->
 
 The average silhouette width is 0.44 and no clusters have not assigned
 points “incorrectly” according to this metric. The width is not the
@@ -859,7 +878,7 @@ fviz_cluster(kmedoids_clusters, data = PC_scores, geom = "point",
              repel = TRUE)
 ```
 
-![](final_report_files/figure-gfm/unnamed-chunk-29-1.png)<!-- --> The
+![](final_report_files/figure-gfm/unnamed-chunk-30-1.png)<!-- --> The
 clusters provide a good amount of separation, and it is similar to the
 clusters obtained through kmeans, although a few points are assigned to
 different clusters.
@@ -890,7 +909,7 @@ fviz_silhouette(med_sil, palette = "jco",
     ## 3       3   10          0.52
     ## 4       4   16          0.46
 
-![](final_report_files/figure-gfm/unnamed-chunk-31-1.png)<!-- --> The
+![](final_report_files/figure-gfm/unnamed-chunk-32-1.png)<!-- --> The
 kmedoid method does not “misclassify” any points and has an average
 silhouette width of 0.44, which is the same as the width obtained
 through kmeans.
@@ -921,7 +940,7 @@ fviz_dist(dist(PC), show_labels = FALSE) +
   labs(title = "PCs")
 ```
 
-![](final_report_files/figure-gfm/unnamed-chunk-33-1.png)<!-- -->
+![](final_report_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
 
 VAT algorithm seems that there could be two clusters in the data.
 Although that’s just my opinion
@@ -931,7 +950,7 @@ library("NbClust")
 nb <- NbClust(PC, distance = "euclidean", min.nc = 2, max.nc = 10, method = "kmeans")
 ```
 
-![](final_report_files/figure-gfm/unnamed-chunk-34-1.png)<!-- -->
+![](final_report_files/figure-gfm/unnamed-chunk-35-1.png)<!-- -->
 
     ## *** : The Hubert index is a graphical method of determining the number of clusters.
     ##                 In the plot of Hubert index, we seek a significant knee that corresponds to a 
@@ -939,7 +958,7 @@ nb <- NbClust(PC, distance = "euclidean", min.nc = 2, max.nc = 10, method = "kme
     ##                 index second differences plot. 
     ## 
 
-![](final_report_files/figure-gfm/unnamed-chunk-34-2.png)<!-- -->
+![](final_report_files/figure-gfm/unnamed-chunk-35-2.png)<!-- -->
 
     ## *** : The D index is a graphical method of determining the number of clusters. 
     ##                 In the plot of D index, we seek a significant knee (the significant peak in Dindex
@@ -1005,9 +1024,25 @@ summary(intern)
     ## Dunn          0.2813 hierarchical 5       
     ## Silhouette    0.3515 hierarchical 4
 
-The 3 metrics do not agree on the best approch. According to
+The 3 metrics do not agree on the best approach. According to
 connectivity hierarchical with 2 clusters is the best, according to Dunn
 kmeans with 6 clusters is the best and according to Silhouette kmeans
 with 4 clusters is the best.
 
 ## Conclusion
+
+The three statistical methods we used in this report had varying levels
+of success in accurately representing patterns in the data. Multiple
+linear regression resulted in a very small R^2, indicating that there is
+very little linear relationship between hate crimes per 100k and the
+rest of the variables. Principle component analysis was much more
+successful. The first three principle components were able to explain
+nearly 80 percent of the variance in the data, effectively reducing the
+dimensions of the data. Clustering had little success. Clustering on the
+original data yielded groupings with small average silhouette widths.
+Clustering with respect to the first two principle components had larger
+average silhouette width, but the results must be taken with a grain of
+salt since the first two principle components only explain roughly 65
+percent of the variability in the data. Overall principle component
+analysis by itself seems to be the most effect method to represent the
+data set.
