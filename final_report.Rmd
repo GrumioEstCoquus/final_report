@@ -1,18 +1,26 @@
 ---
 title: "Final Report"
-author: "Joseph Burks"
-date: "2024-05-05"
+author: "Joseph Burks, Sandali Wijeratne, Thin Han"
+date: "2024-05-07"
 output: github_document
+
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
 # Data Set
 The data set is from 538 a news website owned by ABC News with a focus on opinion poll analysis,
 economics and politics. The data set utilized is a collection of various demographic and economic information per state, such as percentage of no white citizens, percentage of non citizens and median incomes, as wells as, hate
-crime statistics. 
+crime statistics. The dataset can be obtained here: https://github.com/fivethirtyeight/data/tree/master/hate-crimes
+
 
 ```{r, warning = FALSE, message = FALSE}
 library(tidyverse)
 library(factoextra)
+library(factoextra)
+library(cluster)
 hate_crimes <- readr::read_csv("C:/Users/josep/Downloads/hate_crimes.csv")
 head(hate_crimes)
 ```
@@ -28,23 +36,27 @@ summarytools::view(summary_stats, method = "render")
 ## Distribution of Variables
 
 ```{r}
-#ggplot(hate_crimes) +
+par(mfrow =c(3,3))
+colnames <- dimnames(hate_crimes)[[2]]
+for (i in 2:12) {
+    hist(as.numeric(unlist(hate_crimes[,i])),  main=colnames[i], col="cyan", xlab = colnames[i])
+}
+
 ```
 
-## Hate Crimes by State
-
+```{}
+```
+## Variables by State
 ```{r,warning =FALSE}
-ggplot(hate_crimes) +
-  aes(x = reorder(state, avg_hatecrimes_per_100k_fbi), y = avg_hatecrimes_per_100k_fbi) +
-  geom_bar(position="dodge",stat="identity",fill="blue",cex=0.75) + 
-  coord_flip() +
-  labs(title = "Average Hate Crime per 100K by State",
-       x = "State", y = "Average Hate Crime per 100K")
+for (i in 2:12){
+  print(ggplot(hate_crimes) +
+    aes(x = reorder(state, as.numeric(unlist(hate_crimes[,i]))), y = as.numeric(unlist(hate_crimes[,i]))) +
+    geom_bar(position="dodge",stat="identity",fill="blue",cex=0.75) + 
+    coord_flip() +
+    labs(title = paste(colnames[i], "by State"),
+         x = "State", y = colnames[i]))
+}
 ```
-District of Columbia has by far the largest amount of hate crimes per 100k, more than 
-double the second largest of Massachusetts. The states with smallest amount of hate crimes is Wyoming,
-Georgia, and Pennsylvania.
-
 
 ## Missing Values 
 ```{r}
@@ -70,7 +82,8 @@ does contain the percentage for the non citizens for the missing states, which c
 Similarly all the missing data for hate crimes per 100k from the Southern Poverty Law Center is reported, 
 just that in the 4 states with missing data the Southern Poverty Law Center actually reported 0 instincances
 of hate crime. Although this is likely due to how there data collection relied on people reporting directly to them.
-The last missing data point is a result of Hawaii not sharing hate crime information with the FBI, meaning that the data is not missing completely at random. Since Hawaii is the only state with missing data, we decided to drop the state.
+The last missing data point is a result of Hawaii not sharing hate crime information with the FBI, meaning that the data is not missing completely at random. Since Hawaii is the only state with missing data, we decided to drop the state. We while also drop DC, since it is not a state and including it drastically changes the results.
+
 ```{r}
 no_na_crimes <- hate_crimes
 no_na_crimes[20,6] <- 0.01
@@ -79,6 +92,7 @@ no_na_crimes[42,6] <- 0.03
 
 no_na_crimes[is.na(no_na_crimes)] <- 0
 no_na_crimes[12,12] <- NA
+no_na_crimes <- no_na_crimes[-c(9),]
 
 missing.values2 <- no_na_crimes |>
   gather(key = "key", value = "val") |>
@@ -90,6 +104,28 @@ missing.values2 <- no_na_crimes |>
   arrange(desc(num.missing))
 missing.values2
 ```
+
+# Multiple Linear Regression
+
+```{r}
+lm_crimes <- lm(avg_hatecrimes_per_100k_fbi ~ . -state , data = no_na_crimes)
+summary(lm_crimes)
+```
+The only significant predictor is share_non_citizen with a p-value 0.0295 and slope 22.84.
+The R^2 is around 0.3523 and was obtained from fitting hate crimes from fbi vs all other variables. This R^2 is very small, and performing stepwise variable selection, will only result in a regression model with a worse R^2.
+```{r}
+plot(lm_crimes)
+```
+
+The qq plot looks mostly alright then is some deviation from the line in the right tail. The Residual plot does have a u shape, indicating that either the assumption of linearity or homoscedasticity was violated.
+
+```{r}
+plot(avg_hatecrimes_per_100k_fbi ~ share_non_citizen, data = no_na_crimes)
+```
+There is no obvious pattern in the avg_hatecrimes_per_100k_fbi vs share_non_citizen so polynomial regression is would likely not improve upon linear regression. None of the variables seem like they would be good predictors of hate crimes, indicating that regression is likely not a good technique, at least with respect to hate crimes.
+
+
+
 # Principle Component Analysis
 ```{r}
 no_na_crimes <- drop_na(no_na_crimes)
@@ -98,27 +134,27 @@ crimes_cov <- cov(scaled_crimes)
 crimes_eigen <- eigen(crimes_cov)
 str(crimes_eigen)
 ```
+
 According to Kaiser's rule the first three principle components are enough since they are the only ones with eigenvalues greater than 1
 ```{r}
 phi <-crimes_eigen$vectors[,1:3]
-phi <- -phi
+
 colnames(phi) <- c("PC1","PC2","PC3")
 
 pc1 <- scaled_crimes %*% phi[,1]
 pc2 <- scaled_crimes %*% phi[,2]
 pc3 <- scaled_crimes %*% phi[,3]
 
-PC <- data.frame(State = no_na_crimes$state,pc1,pc2,pc3)
+PC <- data.frame(State = no_na_crimes$state,pc1,pc2,pc3)# REMOVED 3RD PC
 head(PC)
 ```
 ```{r}
-results <- princomp(scaled_crimes)
+results <- princomp(scaled_crimes, fix_sign = FALSE)
 fviz_pca_biplot(results)
 ```
 
 \ The biggest contributions for the first principle component are positive contributions from the variables
-share_population_with_highschool_degree and median_income, and negative contributions from share_unemployed_seasonal
-and share_white_poverty. This indicates that the first principle component is a kind of measure of the states' economy. The biggest contributions for the second component share_non_citizen, share_population_in_metro_areas, and the two hate crime variables. Together the first two principle components explain the nearly 70 percent of the variability in the data.
+median_income, both hate crimes statistics and negative contributions from share_white_poverty. This indicates that the first principle component is a kind of measure hate crime rate and the average family economic status. The biggest contributions for the second component share_nonwhite, share_non_citizen, share_population_in_metro_areas, Together the first two principle components explain the nearly 65 percent of the variability in the data.
 ```{r}
 ggplot(PC, aes(pc1, pc2)) + 
   modelr::geom_ref_line(h = 0) +
@@ -128,11 +164,203 @@ ggplot(PC, aes(pc1, pc2)) +
   ylab("Second Principal Component") + 
   ggtitle("First Two Principal Components of USArrests Data")
 ```
-Mississippi appears to have above average economy, at least according to the metrics in the data set, and New Hampshire has the worst. California has above average economy and above average hate_crimes, percentage of non citizens and urbanization.
+West Virginia appears to have below household economic status and rate of hate crimes. It also has a below average share of non white citizens and non citizens.  Maryland has above average economy and above average hate_crimes, percentage of non citizens and urbanization.
 
 ```{r}
 PVE <- crimes_eigen$values/sum(crimes_eigen$values)
 round(PVE,3)
 crimes_eigen$values
 ```
-The first 3 Principle components explain roughly 80 percent of the variability of the data and are the only pcs with eigenvalues greater than 1, so 3 principle components are enough.
+The first 3 Principle components explain roughly 77 percent of the variability of the data and are the only pcs with eigenvalues greater than 1, so 3 principle components are enough to represent the data set while significantly reducing the dimensions.
+
+# Cluster Analysis
+
+# K-Means Clustering
+```{r}
+hate_crimes <- read.csv("C:/Users/josep/Downloads/hate_crimes.csv",header=TRUE,row.names="state")
+hate_crimes[20,5] <- 0.01
+hate_crimes[25,5] <- 0.01
+hate_crimes[42,5] <- 0.03
+
+#no_na_crimes <- drop_na(no_na_crimes)
+#no_na_crimes
+#scaled_crimes <- scale(no_na_crimes)
+head(scaled_crimes)
+scaled_crimes <- scaled_crimes[-9,]
+```
+We will use Total Within Sum of Square vs. Number of clusters graph to find out the number of clusters that are suitable for our dataset.
+```{r}
+fviz_nbclust(scaled_crimes, kmeans, nstart = 25, method = "wss") +
+  geom_vline(xintercept = 4, linetype = 2)
+```
+From the graph, we conclude that the best number of clusters is four. Therefore, we apply k-means algorithm on the data set with four clusters as a parameter. The following print-outs are cluster assignments found.
+```{r}
+set.seed(314)
+km.res <- kmeans(scaled_crimes,4,nstart=25)
+print(km.res$cluster)
+```
+We can visualize the clusters as following in two dimensional space.
+
+```{r}
+fviz_cluster(km.res, 
+             data = scaled_crimes,
+             palette = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07"),
+             ellipse.type = "euclid", # Concentration ellipse
+             star.plot = TRUE, # Add segments from centroids to items
+             repel = TRUE, # Avoid label overplotting (slow)
+             ggtheme = theme_minimal()
+)
+```
+# K-Medoids Clustering
+
+We will apply one more method, K-Medoids clustering to find the clusters in our data set. 
+
+```{r}
+fviz_nbclust(scaled_crimes, pam, method = "silhouette") +
+  theme_classic()
+```
+Using Silhouette Width method, we get the same result that four clusters is the best for the data set.
+```{r}
+pam.res <- pam(scaled_crimes, 4)
+kmedoid.df <- cbind(scaled_crimes, cluster = pam.res$cluster)
+fviz_cluster(pam.res, 
+             data = kmedoid.df,
+             palette = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07"),
+             ellipse.type = "euclid", # Concentration ellipse
+             star.plot = TRUE, # Add segments from centroids to items
+             repel = TRUE, # Avoid label overplotting (slow)
+             ggtheme = theme_minimal()
+)
+```
+From KMedoids clustering, South Carolina, Wisconsin, Virginia and Washington comes out as medoids. 
+
+## Hierarchical Clustering on First Two Principle Components
+ 
+```{r}
+row.names(PC) <- (PC$State)
+PC <- subset(PC, select = -c(State))
+pc.dist <- dist(PC[,1:2], method = "euclidean")
+
+as.matrix(pc.dist)[1:6,1:6]
+
+pc.hc <- hclust(d = pc.dist, method = "ward.D2")
+
+fviz_dend(pc.hc, cex = 0.5)
+
+```
+Using Ward's method, there seems to be four main clusters of states.
+```{r}
+grp <- cutree(pc.hc, k = 4)
+fviz_cluster(list(data = PC[,1:2], cluster = grp),
+             pallete = c("blue","orange","red","pink"),
+             ellipse.type = "convex",
+             repel = TRUE,
+             show.clust.cent = FALSE, ggtheme = theme_minimal())
+```
+```{r}
+res.coph <- cophenetic(pc.hc)
+cor(pc.dist,res.coph)
+```
+The correlation between the cophenetic distance and the original distance is around 0.62 which is not the largest amount of correlation, so the clustering solution may not accurately reflect the data.
+```{r}
+res.hc2 <- hclust(pc.dist,method = "average")
+cor(pc.dist, cophenetic(res.hc2))
+fviz_dend(res.hc2, cex = 0.5)
+
+```
+The correlation between cophenetic distance from using average linkage method and the original distance is around 0.64 is larger than the one from Ward's method, although it is still not that large. Also the dendogram obtained with average linkage does not have as clear a place to "cut" the tree.
+
+## Kmeans with First 2 Principle Components
+```{r}
+fviz_nbclust(PC[,1:2], kmeans, nstart = 25, method = "wss")
+```
+The graph of the function of WSS vs K, indicates that 4 is the optimal number of clusters for kmeans
+```{r}
+set.seed(42)
+km.res <- kmeans(PC, 4, nstart = 25)
+print(km.res)
+```
+The clusters obtained explain roughly 77.4 percent of the variance in the data. This is a decent size, however, it is important to remember that clustering was done with respect to the first 2 principle components which explain less than 70 percent of the variance
+
+
+```{r}
+
+fviz_cluster(km.res, data = PC[,1:2], xlab = "PC1 (34.2%)", ylab = "PC2 (30.4%)")
+```
+
+The clusters on the plane spanned by the first 2 principle component, do good job separating observations. However, the the first two principle components do not explain enough of the variance in the data to clustering with only them in mind.
+
+```{r}
+mean_sil <- eclust(PC[,1:2], "kmeans", k = 4, hc_metric = "euclidean",
+                 hc_method = "ward.D2", graph = FALSE)
+fviz_silhouette(mean_sil, palette = "jco",
+                ggtheme = theme_classic())
+```
+
+The average silhouette width is 0.44 and no clusters have not assigned points "incorrectly" according to this metric. The width is not the largest suggesting that the clusters might not be the most defined. 
+
+## Kmedoids on Principal components
+```{r}
+
+
+# Performing k-medoids clustering on the principal component scores
+set.seed(123) 
+k <- 4
+kmedoids_clusters <- pam(PC[,1:2], k = k)
+
+#Clusters
+fviz_cluster(kmedoids_clusters, data = PC_scores, geom = "point",
+             stand = FALSE, ellipse.type = "convex", ellipse = TRUE,
+             repel = TRUE)
+```
+The clusters provide a good amount of separation, and it is similar to the clusters obtained through kmeans, although a few points are assigned to different clusters.
+```{r}
+PC_with_clusters <- cbind(PC[,1:2], Cluster = as.factor(kmedoids_clusters$clustering))
+head(PC_with_clusters)
+```
+
+
+```{r}
+med_sil <- eclust(PC[,1:2], "pam", k = 4, hc_metric = "euclidean",
+                 hc_method = "ward.D2", graph = FALSE)
+fviz_silhouette(med_sil, palette = "jco",
+                ggtheme = theme_classic())
+```
+The kmedoid method does not "misclassify" any points and has an average silhouette width of 0.44, which is the same as the width obtained through kmeans.
+
+
+## Cluster Assesment
+
+```{r}
+library("clustertend")
+set.seed(123)
+hopkins(PC, n = nrow(PC)-1)
+```
+The Hopkins statistic is pretty close to 0.5 for the first two principle components, indicating likely no clusters exist in the data.
+
+```{r}
+fviz_dist(dist(PC), show_labels = FALSE) +
+  labs(title = "PCs")
+```
+
+VAT algorithm seems that there could be two clusters in the data. Although that's just my opinion
+
+```{r}
+library("NbClust")
+nb <- NbClust(PC, distance = "euclidean", min.nc = 2, max.nc = 10, method = "kmeans")
+
+```
+3 and 7 seems to be the optimal number of clusters.
+
+```{r}
+library(clValid)
+clmethods <- c("hierarchical", "kmeans", "pam")
+intern <- clValid(PC, nClust = 2:6,
+                  clMethods = clmethods, validation = "internal")
+
+summary(intern)
+```
+The 3 metrics do not agree on the best approch. According to connectivity hierarchical with 2 clusters is the best, according to Dunn kmeans with 6 clusters is the best and according to Silhouette kmeans with 4 clusters is the best.
+
+
+## Conclusion
